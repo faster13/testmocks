@@ -1,26 +1,21 @@
-import com.storm.config.AppConfig;
 import com.storm.proj.MagicBox;
 import com.storm.work.UseMagicBox;
-import com.storm.work.impl.MagicBoxImpl;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
-import org.powermock.modules.junit4.PowerMockRunnerDelegate;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.context.ApplicationContext;
-import org.springframework.test.context.ContextConfiguration;
-import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
-import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
-
 import java.util.Date;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.verify;
 import static org.mockito.MockitoAnnotations.initMocks;
 import static org.powermock.api.mockito.PowerMockito.*;
 
@@ -33,6 +28,8 @@ public class TestMagicBox {
     //Мокаем до создания экземпляра тестируемого класса UseMagicBox
     @Mock
     MagicBox magicBox;
+    @Spy
+    ScheduledThreadPoolExecutor service = new ScheduledThreadPoolExecutor(1);
 
     @InjectMocks
     UseMagicBox useMagicBox;
@@ -44,10 +41,13 @@ public class TestMagicBox {
         // Статические методы перехватываем до создания экземпляра UseMagicBox
         mockStatic(Date.class);
         when(Date.parse(anyString())).thenReturn(9L);
+        //service = spy(ScheduledThreadPoolExecutor.class);
+        spy(service);
         useMagicBox = new UseMagicBox();
         initMocks(this); // Без инициализации не заменяются поля с Autowired
         //Мокаем после создания UseMagicBox
         when(magicBox.magicWords()).thenReturn(MAGIC_WORD);
+        whenNew(ScheduledThreadPoolExecutor.class).withAnyArguments().thenReturn(service);
     }
 
     @Test
@@ -62,5 +62,23 @@ public class TestMagicBox {
         String test_word = useMagicBox.doMagic();
 
         assertEquals(MAGIC_WORD, test_word);
+    }
+
+    @Test
+    public void testThread() {
+        /*when(service.scheduleAtFixedRate(
+                any(Runnable.class),
+                eq(5L),
+                eq(5L),
+                eq(TimeUnit.SECONDS)
+        )).thenCallRealMethod();*/
+
+        useMagicBox.anyMethod();
+
+        verify(service, atLeastOnce()).scheduleAtFixedRate(
+                any(Runnable.class),
+                eq(1L),
+                eq(1L),
+                eq(TimeUnit.MICROSECONDS));
     }
 }
